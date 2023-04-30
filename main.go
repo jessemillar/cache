@@ -60,7 +60,7 @@ func composeFilename(name string) string {
 
 // -- File IO functions
 
-func readCacheFile(filename string) (string, error) {
+func getCacheFile(filename string) (string, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return "", err
@@ -70,7 +70,7 @@ func readCacheFile(filename string) (string, error) {
 }
 
 func getCacheFileAsStruct(filename string, target interface{}) (interface{}, error) {
-	data, err := readCacheFile(filename)
+	data, err := getCacheFile(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -114,27 +114,6 @@ func writeStructToCacheFile(filename string, rawStruct interface{}) error {
 
 // -- HTTP functions
 
-func httpRequest(httpMethod string, url string, headers map[string]string) error {
-	cacheFilename := composeFilename(httpRequestToString(url, headers))
-
-	modifiedTime, err := getCacheFileModifiedTime(cacheFilename)
-	if err != nil {
-		return err
-	}
-
-	if time.Now().Sub(modifiedTime) < cacheTTL {
-		fmt.Println("Returning cached value")
-		return nil
-	} else {
-		err = cacheHttpResponse(httpMethod, url, headers)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func cacheHttpResponse(httpMethod string, url string, headers map[string]string) error {
 	req, err := http.NewRequest(httpMethod, url, nil)
 
@@ -156,4 +135,42 @@ func cacheHttpResponse(httpMethod string, url string, headers map[string]string)
 	}
 
 	return writeStringToCacheFile(composeFilename(httpRequestToHash(url, headers)), string(bytes))
+}
+
+func getCachedHttpResponse(httpMethod string, url string, headers map[string]string) (string, error) {
+	cacheFilename := composeFilename(httpRequestToString(url, headers))
+
+	modifiedTime, err := getCacheFileModifiedTime(cacheFilename)
+	if err != nil {
+		return "", err
+	}
+
+	if time.Now().Sub(modifiedTime) < cacheTTL {
+		fmt.Println("Returning cached value")
+	} else {
+		err = cacheHttpResponse(httpMethod, url, headers)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return cacheFilename, nil
+}
+
+func GetHttpResponseAsString(httpMethod string, url string, headers map[string]string) (string, error) {
+	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers)
+	if err != nil {
+		return "", err
+	}
+
+	return getCacheFile(cacheFilename)
+}
+
+func GetHttpResponseAsStruct(httpMethod string, url string, headers map[string]string, target interface{}) (interface{}, error) {
+	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers)
+	if err != nil {
+		return "", err
+	}
+
+	return getCacheFileAsStruct(cacheFilename, target)
 }
