@@ -1,4 +1,4 @@
-package main
+package cache
 
 import (
 	"bytes"
@@ -17,25 +17,6 @@ const cacheFilePrefix = "cache-"
 const cacheFileFormat = ".txt"
 const httpTimeout = 60 * time.Second
 const cacheTTL = 60 * time.Minute
-
-type testMiles struct {
-	Miles int `json:"miles"`
-}
-
-func main() {
-	response, err := GetHttpResponseAsString("GET", "https://statmike.michaelteamracing.com/stats/jesse", nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(response)
-
-	apiResponse := testMiles{}
-	err = GetHttpResponseAsStruct("GET", "https://statmike.michaelteamracing.com/stats/team", nil, &apiResponse)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(apiResponse.Miles)
-}
 
 // -- Utility functions
 
