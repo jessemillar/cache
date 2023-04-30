@@ -18,6 +18,13 @@ const cacheFileFormat = ".txt"
 const httpTimeout = 60 * time.Second
 const cacheTTL = 60 * time.Minute
 
+// -- Structs
+
+type Response struct {
+	StatusCode int    `json:"status"`
+	Body       string `json:"body"`
+}
+
 // -- Utility functions
 
 func hash(s string) string {
@@ -48,27 +55,33 @@ func composeFilename(name string) string {
 
 // -- File IO functions
 
-func getCacheFile(filename string) (string, error) {
+func getCacheFile(filename string) (string, Response, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		return "", err
+		return "", Response{}, err
 	}
 
-	return string(data), nil
+	response := Response{}
+	err = json.Unmarshal([]byte(data), &response)
+	if err != nil {
+		return "", Response{}, err
+	}
+
+	return response.Body, response, nil
 }
 
-func getCacheFileAsStruct(filename string, target interface{}) error {
-	data, err := getCacheFile(filename)
+func getCacheFileAsStruct(filename string, target interface{}) (Response, error) {
+	body, response, err := getCacheFile(filename)
 	if err != nil {
-		return err
+		return Response{}, err
 	}
 
-	err = json.Unmarshal([]byte(data), &target)
+	err = json.Unmarshal([]byte(body), &target)
 	if err != nil {
-		return err
+		return Response{}, err
 	}
 
-	return nil
+	return response, nil
 }
 
 func getCacheFileModifiedTime(filename string) (time.Time, error) {
@@ -122,7 +135,12 @@ func cacheHttpResponse(httpMethod string, url string, headers map[string]string)
 		log.Fatal(err)
 	}
 
-	return writeStringToCacheFile(composeFilename(httpRequestToHash(httpMethod, url, headers)), string(bytes))
+	response := Response{
+		StatusCode: resp.StatusCode,
+		Body:       string(bytes),
+	}
+
+	return writeStructToCacheFile(composeFilename(httpRequestToHash(httpMethod, url, headers)), response)
 }
 
 func getCachedHttpResponse(httpMethod string, url string, headers map[string]string) (string, error) {
@@ -152,19 +170,19 @@ func getCachedHttpResponse(httpMethod string, url string, headers map[string]str
 	return cacheFilename, nil
 }
 
-func GetHttpResponseAsString(httpMethod string, url string, headers map[string]string) (string, error) {
+func GetHttpResponseAsString(httpMethod string, url string, headers map[string]string) (string, Response, error) {
 	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers)
 	if err != nil {
-		return "", err
+		return "", Response{}, err
 	}
 
 	return getCacheFile(cacheFilename)
 }
 
-func GetHttpResponseAsStruct(httpMethod string, url string, headers map[string]string, target interface{}) error {
+func GetHttpResponseAsStruct(httpMethod string, url string, headers map[string]string, target interface{}) (Response, error) {
 	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers)
 	if err != nil {
-		return err
+		return Response{}, err
 	}
 
 	return getCacheFileAsStruct(cacheFilename, target)
