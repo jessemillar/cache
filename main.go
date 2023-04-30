@@ -29,6 +29,8 @@ func main() {
 	}
 }
 
+// -- Utility functions
+
 func hash(s string) string {
 	h := fnv.New32a()
 	h.Write([]byte(s))
@@ -38,6 +40,8 @@ func hash(s string) string {
 func composeFilename(name string) string {
 	return cacheFilePrefix + name + cacheFileFormat
 }
+
+// -- File IO functions
 
 func getCacheFileAsStruct(filename string, target interface{}) (interface{}, error) {
 	cacheFileContents, err := ioutil.ReadFile(filename)
@@ -51,41 +55,6 @@ func getCacheFileAsStruct(filename string, target interface{}) (interface{}, err
 	}
 
 	return target, nil
-}
-
-func cacheHttpResponse(httpMethod string, url string, headers map[string]string) error {
-	req, err := http.NewRequest(httpMethod, url, nil)
-
-	// Add headers
-	for key, value := range headers {
-		req.Header.Add(key, value)
-	}
-
-	client := &http.Client{Timeout: httpTimeout}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	bytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return writeStringToDatabaseFile(composeFilename(hash(url)), string(bytes))
-}
-
-func getStravaStats() error {
-	//if time.Now().Sub(time.Now()).Minutes() < cacheTTL { // TODO Compare now() to the file modification time
-	if "poots" == "poots" {
-		fmt.Println("Skipping getting Strava data since we recently got it")
-		return nil
-	} else {
-		// TODO Do the HTTP request
-	}
-
-	return nil
 }
 
 func readCacheFile(filename string) (string, error) {
@@ -127,4 +96,41 @@ func writeStructToDatabaseFile(filename string, rawStruct interface{}) error {
 	}
 
 	return writeStringToDatabaseFile(filename, string(marshaledStruct))
+}
+
+// -- HTTP functions
+
+func cacheHttpResponse(httpMethod string, url string, headers map[string]string) error {
+	req, err := http.NewRequest(httpMethod, url, nil)
+
+	// Add headers
+	for key, value := range headers {
+		req.Header.Add(key, value)
+	}
+
+	client := &http.Client{Timeout: httpTimeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	bytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return writeStringToDatabaseFile(composeFilename(hash(url)), string(bytes))
+}
+
+func getStravaStats() error {
+	//if time.Now().Sub(time.Now()).Minutes() < cacheTTL { // TODO Compare now() to the file modification time
+	if "poots" == "poots" {
+		fmt.Println("Skipping getting Strava data since we recently got it")
+		return nil
+	} else {
+		// TODO Do the HTTP request
+	}
+
+	return nil
 }
