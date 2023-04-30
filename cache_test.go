@@ -11,16 +11,20 @@ type testMiles struct {
 }
 
 func TestCache(t *testing.T) {
-	body, response, err := GetHttpResponseAsString("GET", "https://statmike.michaelteamracing.com/stats/jesse", nil)
+	response, err := GetHttpResponse("GET", "https://statmike.michaelteamracing.com/stats/jesse", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(body, response)
 
+	fmt.Println(response)
+}
+
+func TestCacheAsStruct(t *testing.T) {
 	apiResponse := testMiles{}
-	response, err = GetHttpResponseAsStruct("GET", "https://statmike.michaelteamracing.com/stats/team", nil, &apiResponse)
+	_, err := GetHttpResponseAsStruct("GET", "https://statmike.michaelteamracing.com/stats/team", nil, &apiResponse)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	fmt.Println(apiResponse.Miles)
 }

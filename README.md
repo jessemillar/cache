@@ -16,21 +16,4 @@ go get github.com/jessemillar/go-cache
 import "github.com/jessemillar/go-cache"
 ```
 
-### Response as String
-```
-response, err := GetHttpResponseAsString("GET", "https://statmike.michaelteamracing.com/stats/jesse", nil)
-if err != nil {
-	log.Fatal(err)
-}
-fmt.Println(response)
-```
-
-### Response as Struct
-```
-apiResponse := testMiles{}
-err = GetHttpResponseAsStruct("GET", "https://statmike.michaelteamracing.com/stats/team", nil, &apiResponse)
-if err != nil {
-	log.Fatal(err)
-}
-fmt.Println(apiResponse.Miles)
-```
+See `cache_test.go` for usage examples.

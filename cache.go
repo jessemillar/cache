@@ -55,28 +55,28 @@ func composeFilename(name string) string {
 
 // -- File IO functions
 
-func getCacheFile(filename string) (string, Response, error) {
+func getCacheFile(filename string) (Response, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		return "", Response{}, err
+		return Response{}, err
 	}
 
 	response := Response{}
 	err = json.Unmarshal([]byte(data), &response)
 	if err != nil {
-		return "", Response{}, err
+		return Response{}, err
 	}
 
-	return response.Body, response, nil
+	return response, nil
 }
 
 func getCacheFileAsStruct(filename string, target interface{}) (Response, error) {
-	body, response, err := getCacheFile(filename)
+	response, err := getCacheFile(filename)
 	if err != nil {
 		return Response{}, err
 	}
 
-	err = json.Unmarshal([]byte(body), &target)
+	err = json.Unmarshal([]byte(response.Body), &target)
 	if err != nil {
 		return Response{}, err
 	}
@@ -170,10 +170,10 @@ func getCachedHttpResponse(httpMethod string, url string, headers map[string]str
 	return cacheFilename, nil
 }
 
-func GetHttpResponseAsString(httpMethod string, url string, headers map[string]string) (string, Response, error) {
+func GetHttpResponse(httpMethod string, url string, headers map[string]string) (Response, error) {
 	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers)
 	if err != nil {
-		return "", Response{}, err
+		return Response{}, err
 	}
 
 	return getCacheFile(cacheFilename)
