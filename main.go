@@ -18,16 +18,23 @@ const cacheFileFormat = ".txt"
 const httpTimeout = 60 * time.Second
 const cacheTTL = 60 * time.Minute
 
-func main() {
-	err := cacheHttpResponse("GET", "https://statmike.michaelteamracing.com/stats/jesse", nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+type testMiles struct {
+	Miles int `json:"miles"`
+}
 
-	err = cacheHttpResponse("GET", "https://statmike.michaelteamracing.com/stats/team", nil)
+func main() {
+	response, err := GetHttpResponseAsString("GET", "https://statmike.michaelteamracing.com/stats/jesse", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println(response)
+
+	apiResponse := testMiles{}
+	err = GetHttpResponseAsStruct("GET", "https://statmike.michaelteamracing.com/stats/team", nil, &apiResponse)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(apiResponse.Miles)
 }
 
 // -- Utility functions
@@ -46,12 +53,12 @@ func mapToString(m map[string]string) string {
 	return b.String()
 }
 
-func httpRequestToString(url string, headers map[string]string) string {
-	return url + mapToString(headers)
+func httpRequestToString(httpMethod string, url string, headers map[string]string) string {
+	return httpMethod + url + mapToString(headers)
 }
 
-func httpRequestToHash(url string, headers map[string]string) string {
-	return hash(httpRequestToString(url, headers))
+func httpRequestToHash(httpMethod string, url string, headers map[string]string) string {
+	return hash(httpRequestToString(httpMethod, url, headers))
 }
 
 func composeFilename(name string) string {
@@ -69,18 +76,18 @@ func getCacheFile(filename string) (string, error) {
 	return string(data), nil
 }
 
-func getCacheFileAsStruct(filename string, target interface{}) (interface{}, error) {
+func getCacheFileAsStruct(filename string, target interface{}) error {
 	data, err := getCacheFile(filename)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = json.Unmarshal([]byte(data), &target)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return target, nil
+	return nil
 }
 
 func getCacheFileModifiedTime(filename string) (time.Time, error) {
@@ -98,7 +105,7 @@ func writeStringToCacheFile(filename string, value string) error {
 		return err
 	}
 
-	fmt.Printf("Updating %s with %s\n", filename, value)
+	fmt.Printf("Writing %s with %s\n", filename, value)
 
 	return nil
 }
@@ -134,19 +141,26 @@ func cacheHttpResponse(httpMethod string, url string, headers map[string]string)
 		log.Fatal(err)
 	}
 
-	return writeStringToCacheFile(composeFilename(httpRequestToHash(url, headers)), string(bytes))
+	return writeStringToCacheFile(composeFilename(httpRequestToHash(httpMethod, url, headers)), string(bytes))
 }
 
 func getCachedHttpResponse(httpMethod string, url string, headers map[string]string) (string, error) {
-	cacheFilename := composeFilename(httpRequestToString(url, headers))
+	cacheFilename := composeFilename(httpRequestToHash(httpMethod, url, headers))
 
-	modifiedTime, err := getCacheFileModifiedTime(cacheFilename)
-	if err != nil {
-		return "", err
-	}
+	if _, err := os.Stat(cacheFilename); err == nil { // Check if the cache file exists
+		modifiedTime, err := getCacheFileModifiedTime(cacheFilename)
+		if err != nil {
+			return "", err
+		}
 
-	if time.Now().Sub(modifiedTime) < cacheTTL {
-		fmt.Println("Returning cached value")
+		if time.Now().Sub(modifiedTime) < cacheTTL {
+			fmt.Printf("Returning cached value from %s\n", cacheFilename)
+		} else {
+			err = cacheHttpResponse(httpMethod, url, headers)
+			if err != nil {
+				return "", err
+			}
+		}
 	} else {
 		err = cacheHttpResponse(httpMethod, url, headers)
 		if err != nil {
@@ -166,10 +180,10 @@ func GetHttpResponseAsString(httpMethod string, url string, headers map[string]s
 	return getCacheFile(cacheFilename)
 }
 
-func GetHttpResponseAsStruct(httpMethod string, url string, headers map[string]string, target interface{}) (interface{}, error) {
+func GetHttpResponseAsStruct(httpMethod string, url string, headers map[string]string, target interface{}) error {
 	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	return getCacheFileAsStruct(cacheFilename, target)
