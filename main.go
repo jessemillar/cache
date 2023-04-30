@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -19,11 +19,12 @@ const httpTimeout = 60 * time.Second
 const cacheTTL = 60 * time.Minute
 
 func main() {
-	fmt.Println("Hello")
-	fmt.Println(hash("Hello"))
-	fmt.Println(hash("Hello."))
-
 	err := cacheHttpResponse("GET", "https://statmike.michaelteamracing.com/stats/jesse", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = cacheHttpResponse("GET", "https://statmike.michaelteamracing.com/stats/team", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,36 +38,49 @@ func hash(s string) string {
 	return strconv.FormatUint(uint64(h.Sum32()), 10)
 }
 
+func mapToString(m map[string]string) string {
+	b := new(bytes.Buffer)
+	for key, value := range m {
+		fmt.Fprintf(b, "%s=\"%s\"\n", key, value)
+	}
+	return b.String()
+}
+
+func httpRequestToString(url string, headers map[string]string) string {
+	return url + mapToString(headers)
+}
+
+func httpRequestToHash(url string, headers map[string]string) string {
+	return hash(httpRequestToString(url, headers))
+}
+
 func composeFilename(name string) string {
 	return cacheFilePrefix + name + cacheFileFormat
 }
 
 // -- File IO functions
 
+func readCacheFile(filename string) (string, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}
+
 func getCacheFileAsStruct(filename string, target interface{}) (interface{}, error) {
-	cacheFileContents, err := ioutil.ReadFile(filename)
+	data, err := readCacheFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	err = json.Unmarshal([]byte(cacheFileContents), &target)
+	err = json.Unmarshal([]byte(data), &target)
 	if err != nil {
 		return nil, err
 	}
 
 	return target, nil
-}
-
-func readCacheFile(filename string) (string, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		fmt.Println(err)
-		return "", err
-	}
-
-	fmt.Printf("Read %s from %s\n", string(data), filename)
-
-	return string(data), nil
 }
 
 func getCacheFileModifiedTime(filename string) (time.Time, error) {
@@ -78,27 +92,48 @@ func getCacheFileModifiedTime(filename string) (time.Time, error) {
 	return file.ModTime(), nil
 }
 
-func writeStringToDatabaseFile(filename string, value string) error {
+func writeStringToCacheFile(filename string, value string) error {
 	err := os.WriteFile(filename, []byte(value), 0666)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Updating %s to %s\n", filename, value)
+	fmt.Printf("Updating %s with %s\n", filename, value)
 
 	return nil
 }
 
-func writeStructToDatabaseFile(filename string, rawStruct interface{}) error {
+func writeStructToCacheFile(filename string, rawStruct interface{}) error {
 	marshaledStruct, err := json.Marshal(&rawStruct)
 	if err != nil {
 		return err
 	}
 
-	return writeStringToDatabaseFile(filename, string(marshaledStruct))
+	return writeStringToCacheFile(filename, string(marshaledStruct))
 }
 
 // -- HTTP functions
+
+func httpRequest(httpMethod string, url string, headers map[string]string) error {
+	cacheFilename := composeFilename(httpRequestToString(url, headers))
+
+	modifiedTime, err := getCacheFileModifiedTime(cacheFilename)
+	if err != nil {
+		return err
+	}
+
+	if time.Now().Sub(modifiedTime) < cacheTTL {
+		fmt.Println("Returning cached value")
+		return nil
+	} else {
+		err = cacheHttpResponse(httpMethod, url, headers)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 
 func cacheHttpResponse(httpMethod string, url string, headers map[string]string) error {
 	req, err := http.NewRequest(httpMethod, url, nil)
@@ -120,17 +155,5 @@ func cacheHttpResponse(httpMethod string, url string, headers map[string]string)
 		log.Fatal(err)
 	}
 
-	return writeStringToDatabaseFile(composeFilename(hash(url)), string(bytes))
-}
-
-func getStravaStats() error {
-	//if time.Now().Sub(time.Now()).Minutes() < cacheTTL { // TODO Compare now() to the file modification time
-	if "poots" == "poots" {
-		fmt.Println("Skipping getting Strava data since we recently got it")
-		return nil
-	} else {
-		// TODO Do the HTTP request
-	}
-
-	return nil
+	return writeStringToCacheFile(composeFilename(httpRequestToHash(url, headers)), string(bytes))
 }
