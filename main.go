@@ -3,17 +3,40 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
 const cacheFilePrefix = "cache-"
+const cacheFileFormat = ".txt"
 const httpTimeout = 60 * time.Second
+const cacheTTL = 60 * time.Minute
 
 func main() {
 	fmt.Println("Hello")
+	fmt.Println(hash("Hello"))
+	fmt.Println(hash("Hello."))
+
+	err := cacheHttpResponse("GET", "https://statmike.michaelteamracing.com/stats/jesse", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func hash(s string) string {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return strconv.FormatUint(uint64(h.Sum32()), 10)
+}
+
+func composeFilename(name string) string {
+	return cacheFilePrefix + name + cacheFileFormat
 }
 
 func getCacheFileAsStruct(filename string, target interface{}) (interface{}, error) {
@@ -30,7 +53,7 @@ func getCacheFileAsStruct(filename string, target interface{}) (interface{}, err
 	return target, nil
 }
 
-func cacheHttpRequestResponse(httpMethod string, url string, headers map[string]string, cacheFilename string) error {
+func cacheHttpResponse(httpMethod string, url string, headers map[string]string) error {
 	req, err := http.NewRequest(httpMethod, url, nil)
 
 	// Add headers
@@ -45,32 +68,27 @@ func cacheHttpRequestResponse(httpMethod string, url string, headers map[string]
 	}
 	defer resp.Body.Close()
 
-	// TODO Write to file
-	return json.NewDecoder(resp.Body).Decode(target)
-}
-
-func getStravaStats(userConfig *UserConfig, userDatabase string, currentData StravaAthleteStats) (StravaAthleteStats, error) {
-	// Check if we recently updated Strava data
-	if userConfig.LastUpdateTime.IsZero() { // We want to always fetch on launch or if we don't have a cache
-		userConfig.LastUpdateTime = time.Now()
-	} else {
-		if time.Now().Sub(userConfig.LastUpdateTime).Minutes() < stravaCacheTTL {
-			fmt.Println("Skipping getting Strava data since we recently got it")
-			return currentData, nil
-		} else {
-			userConfig.LastUpdateTime = time.Now()
-		}
-	}
-
-	err = writeStructToDatabaseFile(userDatabase, apiResponse)
+	bytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return currentData, err
+		log.Fatal(err)
 	}
 
-	return apiResponse, nil
+	return writeStringToDatabaseFile(composeFilename(hash(url)), string(bytes))
 }
 
-func readDatabaseFile(filename string) (string, error) {
+func getStravaStats() error {
+	//if time.Now().Sub(time.Now()).Minutes() < cacheTTL { // TODO Compare now() to the file modification time
+	if "poots" == "poots" {
+		fmt.Println("Skipping getting Strava data since we recently got it")
+		return nil
+	} else {
+		// TODO Do the HTTP request
+	}
+
+	return nil
+}
+
+func readCacheFile(filename string) (string, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		fmt.Println(err)
@@ -109,20 +127,4 @@ func writeStructToDatabaseFile(filename string, rawStruct interface{}) error {
 	}
 
 	return writeStringToDatabaseFile(filename, string(marshaledStruct))
-}
-
-func readUserDatabaseFile(filename string) (StravaAthleteStats, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		fmt.Println(err)
-		return StravaAthleteStats{}, err
-	}
-
-	userDatabase := StravaAthleteStats{}
-	err = json.Unmarshal([]byte(data), &userDatabase)
-	if err != nil {
-		return StravaAthleteStats{}, err
-	}
-
-	return userDatabase, err
 }
