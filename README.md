@@ -4,7 +4,17 @@ I got tired of rewriting HTTP response caching logic for all my microservices so
 
 `go-cache` currently has hard-coded defaults of 60 second HTTP timeout and 60 minute cache TTL.
 
+## Installation
+
+```
+go get github.com/jessemillar/go-cache
+```
+
 ## Usage
+
+```
+import "github.com/jessemillar/go-cache"
+```
 
 ### Response as String
 ```
