@@ -99,7 +99,8 @@ func writeStringToCacheFile(filename string, value string) error {
 		return err
 	}
 
-	fmt.Printf("Writing %s with %s\n", filename, value)
+	//fmt.Printf("Writing %s with %s\n", filename, value)
+	fmt.Printf("Writing %s\n", filename)
 
 	return nil
 }
