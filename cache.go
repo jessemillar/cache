@@ -3,6 +3,7 @@ package cache
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"io"
@@ -149,7 +150,7 @@ func cacheHttpResponse(httpMethod string, url string, headers map[string][]strin
 	return writeStructToCacheFile(composeFilename(httpRequestToHash(httpMethod, url, headers)), response)
 }
 
-func getCachedHttpResponse(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration) (string, error) {
+func getCachedHttpResponse(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (string, error) {
 	cacheFilename := composeFilename(httpRequestToHash(httpMethod, url, headers))
 
 	if _, err := os.Stat(cacheFilename); err == nil { // Check if the cache file exists
@@ -166,12 +167,16 @@ func getCachedHttpResponse(httpMethod string, url string, headers map[string][]s
 		if time.Since(modifiedTime) < tempCacheTTL {
 			fmt.Printf("Returning cached value from %s\n", cacheFilename)
 			return cacheFilename, nil
+		} else if !allowCacheUpdate {
+			return "", errors.New("permissions only allow reading from cache, not permitted to updated cache")
 		} else {
 			err = cacheHttpResponse(httpMethod, url, headers)
 			if err != nil {
 				return "", err
 			}
 		}
+	} else if !allowCacheUpdate {
+		return "", errors.New("permissions only allow reading from cache, not permitted to updated cache")
 	} else {
 		err = cacheHttpResponse(httpMethod, url, headers)
 		if err != nil {
@@ -183,9 +188,9 @@ func getCachedHttpResponse(httpMethod string, url string, headers map[string][]s
 }
 
 // HttpRequest sends an HTTP request to the specified URL and returns the HTTP response.
-// The response is cached for a duration specified by cacheTTL. If cacheTTL is zero, the default cache TTL value is used.
-func HttpRequest(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration) (Response, error) {
-	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers, cacheTTLOverride)
+// The response is cached for a duration specified by cacheTTL. If cacheTTLOverride is zero, the default cache TTL value is used.
+func HttpRequest(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (Response, error) {
+	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate)
 	if err != nil {
 		return Response{}, err
 	}
@@ -194,11 +199,23 @@ func HttpRequest(httpMethod string, url string, headers map[string][]string, cac
 }
 
 // HttpRequestReturnStruct is the same as HttpRequest but it returns the result as a specified struct.
-func HttpRequestReturnStruct(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, target interface{}) (Response, error) {
-	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers, cacheTTLOverride)
+// HttpRequest sends an HTTP request to the specified URL and returns the HTTP response.
+// The response is cached for a duration specified by cacheTTL. If cacheTTLOverride is zero, the default cache TTL value is used.
+func HttpRequestReturnStruct(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool, target interface{}) (Response, error) {
+	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate)
 	if err != nil {
 		return Response{}, err
 	}
 
 	return getCacheFileAsStruct(cacheFilename, target)
+}
+
+// BasicHttpRequest makes a request with default parameters
+func BasicHttpRequest(httpMethod string, url string) (Response, error) {
+	return HttpRequest(httpMethod, url, nil, 0, true)
+}
+
+// BasicHttpRequestReturnStruct makes a request with default parameters
+func BasicHttpRequestReturnStruct(httpMethod string, url string, target interface{}) (Response, error) {
+	return HttpRequestReturnStruct(httpMethod, url, nil, 0, true, target)
 }
