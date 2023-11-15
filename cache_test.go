@@ -11,7 +11,7 @@ type testMiles struct {
 }
 
 func TestCache(t *testing.T) {
-	response, err := GetHttpResponse("GET", "https://statmike.michaelteamracing.com/stats/jesse", nil)
+	response, err := HttpRequest("GET", "https://statmike.compycore.com/mtr/stats/jesse", nil, 0)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -21,7 +21,7 @@ func TestCache(t *testing.T) {
 
 func TestCacheAsStruct(t *testing.T) {
 	apiResponse := testMiles{}
-	_, err := GetHttpResponseAsStruct("GET", "https://statmike.michaelteamracing.com/stats/team", nil, &apiResponse)
+	_, err := HttpRequestReturnStruct("GET", "https://statmike.compycore.com/mtr/stats/team", nil, 0, &apiResponse)
 	if err != nil {
 		log.Fatal(err)
 	}

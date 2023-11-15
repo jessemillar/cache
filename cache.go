@@ -33,7 +33,7 @@ func hash(s string) string {
 	return strconv.FormatUint(uint64(h.Sum32()), 10)
 }
 
-func mapToString(m map[string]string) string {
+func mapToString(m map[string][]string) string {
 	b := new(bytes.Buffer)
 	for key, value := range m {
 		fmt.Fprintf(b, "%s=\"%s\"\n", key, value)
@@ -41,11 +41,11 @@ func mapToString(m map[string]string) string {
 	return b.String()
 }
 
-func httpRequestToString(httpMethod string, url string, headers map[string]string) string {
+func httpRequestToString(httpMethod string, url string, headers map[string][]string) string {
 	return httpMethod + url + mapToString(headers)
 }
 
-func httpRequestToHash(httpMethod string, url string, headers map[string]string) string {
+func httpRequestToHash(httpMethod string, url string, headers map[string][]string) string {
 	return hash(httpRequestToString(httpMethod, url, headers))
 }
 
@@ -116,12 +116,17 @@ func writeStructToCacheFile(filename string, rawStruct interface{}) error {
 
 // -- HTTP functions
 
-func cacheHttpResponse(httpMethod string, url string, headers map[string]string) error {
+func cacheHttpResponse(httpMethod string, url string, headers map[string][]string) error {
 	req, err := http.NewRequest(httpMethod, url, nil)
+	if err != nil {
+		return err
+	}
 
 	// Add headers
 	for key, value := range headers {
-		req.Header.Add(key, value)
+		for _, headerValue := range value {
+			req.Header.Add(key, headerValue)
+		}
 	}
 
 	client := &http.Client{Timeout: httpTimeout}
@@ -144,7 +149,7 @@ func cacheHttpResponse(httpMethod string, url string, headers map[string]string)
 	return writeStructToCacheFile(composeFilename(httpRequestToHash(httpMethod, url, headers)), response)
 }
 
-func getCachedHttpResponse(httpMethod string, url string, headers map[string]string) (string, error) {
+func getCachedHttpResponse(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration) (string, error) {
 	cacheFilename := composeFilename(httpRequestToHash(httpMethod, url, headers))
 
 	if _, err := os.Stat(cacheFilename); err == nil { // Check if the cache file exists
@@ -153,8 +158,14 @@ func getCachedHttpResponse(httpMethod string, url string, headers map[string]str
 			return "", err
 		}
 
-		if time.Now().Sub(modifiedTime) < cacheTTL {
+		tempCacheTTL := cacheTTL
+		if cacheTTLOverride != 0 {
+			tempCacheTTL = cacheTTLOverride
+		}
+
+		if time.Since(modifiedTime) < tempCacheTTL {
 			fmt.Printf("Returning cached value from %s\n", cacheFilename)
+			return cacheFilename, nil
 		} else {
 			err = cacheHttpResponse(httpMethod, url, headers)
 			if err != nil {
@@ -171,8 +182,10 @@ func getCachedHttpResponse(httpMethod string, url string, headers map[string]str
 	return cacheFilename, nil
 }
 
-func GetHttpResponse(httpMethod string, url string, headers map[string]string) (Response, error) {
-	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers)
+// HttpRequest sends an HTTP request to the specified URL and returns the HTTP response.
+// The response is cached for a duration specified by cacheTTL. If cacheTTL is zero, the default cache TTL value is used.
+func HttpRequest(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration) (Response, error) {
+	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers, cacheTTLOverride)
 	if err != nil {
 		return Response{}, err
 	}
@@ -180,8 +193,9 @@ func GetHttpResponse(httpMethod string, url string, headers map[string]string) (
 	return getCacheFile(cacheFilename)
 }
 
-func GetHttpResponseAsStruct(httpMethod string, url string, headers map[string]string, target interface{}) (Response, error) {
-	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers)
+// HttpRequestReturnStruct is the same as HttpRequest but it returns the result as a specified struct.
+func HttpRequestReturnStruct(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, target interface{}) (Response, error) {
+	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers, cacheTTLOverride)
 	if err != nil {
 		return Response{}, err
 	}
