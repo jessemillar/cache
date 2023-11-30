@@ -117,7 +117,7 @@ func writeStructToCacheFile(filename string, rawStruct interface{}) error {
 
 // -- HTTP functions
 
-func cacheHttpResponse(httpMethod string, url string, headers map[string][]string) error {
+func cacheHttpResponse(cacheFilename string, httpMethod string, url string, headers map[string][]string) error {
 	req, err := http.NewRequest(httpMethod, url, nil)
 	if err != nil {
 		return err
@@ -147,16 +147,17 @@ func cacheHttpResponse(httpMethod string, url string, headers map[string][]strin
 		Body:       string(bytes),
 	}
 
-	return writeStructToCacheFile(composeFilename(httpRequestToHash(httpMethod, url, headers)), response)
+	return writeStructToCacheFile(cacheFilename, response)
 }
 
-func getCachedHttpResponse(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (string, error) {
-	cacheFilename := composeFilename(httpRequestToHash(httpMethod, url, headers))
+// checkCacheExistenceAndPermissions does what the function name says; returns (isStale, err): if err is nil, the cache file exists and we're allowed to update the cache
+func checkCacheExistenceAndPermissions(cacheFilename string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (bool, error) {
+	permissionsErrorMessage := "permissions only allow reading from cache, not permitted to updated cache"
 
 	if _, err := os.Stat(cacheFilename); err == nil { // Check if the cache file exists
 		modifiedTime, err := getCacheFileModifiedTime(cacheFilename)
 		if err != nil {
-			return "", err
+			return true, err
 		}
 
 		tempCacheTTL := cacheTTL
@@ -165,20 +166,29 @@ func getCachedHttpResponse(httpMethod string, url string, headers map[string][]s
 		}
 
 		if time.Since(modifiedTime) < tempCacheTTL {
-			fmt.Printf("Returning cached value from %s\n", cacheFilename)
-			return cacheFilename, nil
+			return false, nil // Cache exists and is not stale
 		} else if !allowCacheUpdate {
-			return "", errors.New("permissions only allow reading from cache, not permitted to updated cache")
+			return false, errors.New(permissionsErrorMessage)
 		} else {
-			err = cacheHttpResponse(httpMethod, url, headers)
-			if err != nil {
-				return "", err
-			}
+			return true, nil // Cache exists in a stale state and we're allowed to update it
 		}
 	} else if !allowCacheUpdate {
-		return "", errors.New("permissions only allow reading from cache, not permitted to updated cache")
-	} else {
-		err = cacheHttpResponse(httpMethod, url, headers)
+		return false, errors.New(permissionsErrorMessage)
+	}
+
+	return true, nil // Cache doesn't exist yet and we're allowed to create it
+}
+
+func httpRequest(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (string, error) {
+	cacheFilename := composeFilename(httpRequestToHash(httpMethod, url, headers))
+
+	isStale, err := checkCacheExistenceAndPermissions(cacheFilename, cacheTTLOverride, allowCacheUpdate)
+	if err != nil {
+		return "", err
+	}
+
+	if isStale {
+		err = cacheHttpResponse(cacheFilename, httpMethod, url, headers)
 		if err != nil {
 			return "", err
 		}
@@ -190,7 +200,7 @@ func getCachedHttpResponse(httpMethod string, url string, headers map[string][]s
 // HttpRequest sends an HTTP request to the specified URL and returns the HTTP response.
 // The response is cached for a duration specified by cacheTTL. If cacheTTLOverride is zero, the default cache TTL value is used.
 func HttpRequest(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (Response, error) {
-	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate)
+	cacheFilename, err := httpRequest(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate)
 	if err != nil {
 		return Response{}, err
 	}
@@ -202,7 +212,7 @@ func HttpRequest(httpMethod string, url string, headers map[string][]string, cac
 // HttpRequest sends an HTTP request to the specified URL and returns the HTTP response.
 // The response is cached for a duration specified by cacheTTL. If cacheTTLOverride is zero, the default cache TTL value is used.
 func HttpRequestReturnStruct(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool, target interface{}) (Response, error) {
-	cacheFilename, err := getCachedHttpResponse(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate)
+	cacheFilename, err := httpRequest(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate)
 	if err != nil {
 		return Response{}, err
 	}
