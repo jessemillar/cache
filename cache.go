@@ -56,33 +56,18 @@ func composeFilename(name string) string {
 
 // -- File IO functions
 
-func getCacheFile(filename string) (Response, error) {
+func GetCacheFileAsStruct(filename string, target interface{}) error {
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		return Response{}, err
+		return err
 	}
 
-	response := Response{}
-	err = json.Unmarshal([]byte(data), &response)
+	err = json.Unmarshal([]byte(data), &target)
 	if err != nil {
-		return Response{}, err
+		return err
 	}
 
-	return response, nil
-}
-
-func getCacheFileAsStruct(filename string, target interface{}) (Response, error) {
-	response, err := getCacheFile(filename)
-	if err != nil {
-		return Response{}, err
-	}
-
-	err = json.Unmarshal([]byte(response.Body), &target)
-	if err != nil {
-		return Response{}, err
-	}
-
-	return response, nil
+	return nil
 }
 
 func getCacheFileModifiedTime(filename string) (time.Time, error) {
@@ -94,7 +79,7 @@ func getCacheFileModifiedTime(filename string) (time.Time, error) {
 	return file.ModTime(), nil
 }
 
-func WriteStringToCacheFile(filename string, value string) error {
+func writeStringToCacheFile(filename string, value string) error {
 	fmt.Printf("Writing %s\n", filename)
 
 	err := os.WriteFile(filename, []byte(value), 0666)
@@ -105,13 +90,13 @@ func WriteStringToCacheFile(filename string, value string) error {
 	return nil
 }
 
-func WriteStructToCacheFile(filename string, rawStruct interface{}) error {
+func writeResponseStructToCacheFile(filename string, rawStruct Response) error {
 	marshaledStruct, err := json.Marshal(&rawStruct)
 	if err != nil {
 		return err
 	}
 
-	return WriteStringToCacheFile(filename, string(marshaledStruct))
+	return writeStringToCacheFile(filename, string(marshaledStruct))
 }
 
 // -- HTTP functions
@@ -146,7 +131,7 @@ func cacheHttpResponse(cacheFilename string, httpMethod string, url string, head
 		Body:       string(bytes),
 	}
 
-	return WriteStructToCacheFile(cacheFilename, response)
+	return writeResponseStructToCacheFile(cacheFilename, response)
 }
 
 // checkCacheExistenceAndPermissions does what the function name says; returns (isStale, err): if err is nil, the cache file exists and we're allowed to update the cache
@@ -204,7 +189,13 @@ func HttpRequest(httpMethod string, url string, headers map[string][]string, cac
 		return Response{}, err
 	}
 
-	return getCacheFile(cacheFilename)
+	response := Response{}
+	err = GetCacheFileAsStruct(cacheFilename, &response)
+	if err != nil {
+		return Response{}, err
+	}
+
+	return response, nil
 }
 
 // HttpRequestReturnStruct is the same as HttpRequest but it returns the result as a specified struct.
@@ -216,7 +207,13 @@ func HttpRequestReturnStruct(httpMethod string, url string, headers map[string][
 		return Response{}, err
 	}
 
-	return getCacheFileAsStruct(cacheFilename, target)
+	response := Response{}
+	err = GetCacheFileAsStruct(cacheFilename, &response)
+	if err != nil {
+		return Response{}, err
+	}
+
+	return response, nil
 }
 
 // BasicHttpRequest makes a request with default parameters
@@ -230,32 +227,33 @@ func BasicHttpRequestReturnStruct(httpMethod string, url string, target interfac
 }
 
 // GetCacheAndStaleness returns the contents of the cache file and whether or not the cache is stale (this does not make an HTTP request)
-func GetCacheAndStaleness(cacheFilename string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (string, bool, error) {
+func GetCacheAndStaleness(cacheFilename string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (Response, bool, error) {
 	isStale, err := checkCacheExistenceAndPermissions(cacheFilename, cacheTTLOverride, allowCacheUpdate)
 	if err != nil {
-		return "", isStale, err
+		return Response{}, isStale, err
 	}
 
-	cache, err := getCacheFile(cacheFilename)
+	cacheContents := Response{}
+	err = GetCacheFileAsStruct(cacheFilename, &cacheContents)
 	if err != nil {
-		return "", isStale, err
+		return Response{}, isStale, err
 	}
 
-	return cache.Body, isStale, nil
+	return cacheContents, isStale, nil
 }
 
 // GetCacheAndStalenessReturnStruct is the same as GetCacheAndStaleness but it returns the result as a specified struct.
 // GetCacheAndStalenessReturnStruct returns the contents of the cache file as a struct and whether or not the cache is stale (this does not make an HTTP request)
-func GetCacheAndStalenessReturnStruct(cacheFilename string, cacheTTLOverride time.Duration, allowCacheUpdate bool, target interface{}) (string, bool, error) {
+func GetCacheAndStalenessReturnStruct(cacheFilename string, cacheTTLOverride time.Duration, allowCacheUpdate bool, target interface{}) (bool, error) {
 	isStale, err := checkCacheExistenceAndPermissions(cacheFilename, cacheTTLOverride, allowCacheUpdate)
 	if err != nil {
-		return "", isStale, err
+		return isStale, err
 	}
 
-	cache, err := getCacheFileAsStruct(cacheFilename, target)
+	err = GetCacheFileAsStruct(cacheFilename, target)
 	if err != nil {
-		return "", isStale, err
+		return isStale, err
 	}
 
-	return cache.Body, isStale, nil
+	return isStale, nil
 }

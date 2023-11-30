@@ -56,3 +56,26 @@ func TestBasicHttpCacheAsStruct(t *testing.T) {
 
 	fmt.Println(apiResponse.Miles)
 }
+
+func TestCache(t *testing.T) {
+	cacheValue, isStale, err := GetCacheAndStaleness("cache-test.txt", 0, true)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(cacheValue, isStale)
+}
+
+func TestCacheAsStruct(t *testing.T) {
+	type testStruct struct {
+		Test string `json:"test"`
+	}
+
+	cacheValue := testStruct{}
+	isStale, err := GetCacheAndStalenessReturnStruct("cache-test-struct.txt", 0, true, &cacheValue)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(cacheValue, isStale)
+}
