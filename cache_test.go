@@ -10,7 +10,7 @@ type testMiles struct {
 	Miles int `json:"miles"`
 }
 
-func TestCache(t *testing.T) {
+func TestHttpCache(t *testing.T) {
 	response, err := HttpRequest("GET", "https://statmike.compycore.com/mtr/stats/jesse", nil, 0, true)
 	if err != nil {
 		log.Fatal(err)
@@ -19,7 +19,7 @@ func TestCache(t *testing.T) {
 	fmt.Println(response)
 }
 
-func TestBasicCache(t *testing.T) {
+func TestBasicHttpCache(t *testing.T) {
 	response, err := BasicHttpRequest("GET", "https://statmike.compycore.com/mtr/stats/jesse")
 	if err != nil {
 		log.Fatal(err)
@@ -28,7 +28,7 @@ func TestBasicCache(t *testing.T) {
 	fmt.Println(response)
 }
 
-func TestCacheNoUpdateAllowed(t *testing.T) {
+func TestHttpCacheNoUpdateAllowed(t *testing.T) {
 	response, err := HttpRequest("GET", "https://statmike.compycore.com/mtr/stats/poots", nil, 0, false)
 	if err == nil {
 		log.Fatal(err)
@@ -37,7 +37,7 @@ func TestCacheNoUpdateAllowed(t *testing.T) {
 	fmt.Println(response)
 }
 
-func TestCacheAsStruct(t *testing.T) {
+func TestHttpCacheAsStruct(t *testing.T) {
 	apiResponse := testMiles{}
 	_, err := HttpRequestReturnStruct("GET", "https://statmike.compycore.com/mtr/stats/team", nil, 0, true, &apiResponse)
 	if err != nil {
@@ -47,7 +47,7 @@ func TestCacheAsStruct(t *testing.T) {
 	fmt.Println(apiResponse.Miles)
 }
 
-func TestBasicCacheAsStruct(t *testing.T) {
+func TestBasicHttpCacheAsStruct(t *testing.T) {
 	apiResponse := testMiles{}
 	_, err := BasicHttpRequestReturnStruct("GET", "https://statmike.compycore.com/mtr/stats/team", &apiResponse)
 	if err != nil {
