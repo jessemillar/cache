@@ -79,7 +79,7 @@ func getCacheFileModifiedTime(filename string) (time.Time, error) {
 	return file.ModTime(), nil
 }
 
-func writeStringToCacheFile(filename string, value string) error {
+func WriteStringToCacheFile(filename string, value string) error {
 	fmt.Printf("Writing %s\n", filename)
 
 	err := os.WriteFile(filename, []byte(value), 0666)
@@ -90,13 +90,13 @@ func writeStringToCacheFile(filename string, value string) error {
 	return nil
 }
 
-func writeResponseStructToCacheFile(filename string, rawStruct Response) error {
+func WriteStructToCacheFile(filename string, rawStruct interface{}) error {
 	marshaledStruct, err := json.Marshal(&rawStruct)
 	if err != nil {
 		return err
 	}
 
-	return writeStringToCacheFile(filename, string(marshaledStruct))
+	return WriteStringToCacheFile(filename, string(marshaledStruct))
 }
 
 // -- HTTP functions
@@ -131,7 +131,7 @@ func cacheHttpResponse(cacheFilename string, httpMethod string, url string, head
 		Body:       string(bytes),
 	}
 
-	return writeResponseStructToCacheFile(cacheFilename, response)
+	return WriteStructToCacheFile(cacheFilename, response)
 }
 
 // checkCacheExistenceAndPermissions does what the function name says; returns (isStale, err): if err is nil, the cache file exists and we're allowed to update the cache
