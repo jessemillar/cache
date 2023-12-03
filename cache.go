@@ -203,12 +203,13 @@ func HttpRequest(httpMethod string, url string, headers map[string][]string, cac
 // HttpRequest sends an HTTP request to the specified URL and returns the HTTP response.
 // The response is cached for a duration specified by cacheTTL. If cacheTTLOverride is zero, the default cache TTL value is used.
 func HttpRequestReturnStruct(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool, target interface{}) error {
-	cacheFilename, err := httpRequest(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate)
+	cachedResponse, err := HttpRequest(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate)
 	if err != nil {
 		return err
 	}
 
-	err = getCacheFileAsStruct(cacheFilename, target)
+	// Unmarshal the response body into the specified struct since we don't seem to care about the status code
+	err = json.Unmarshal([]byte(cachedResponse.Body), target)
 	if err != nil {
 		return err
 	}
@@ -227,19 +228,19 @@ func BasicHttpRequestReturnStruct(httpMethod string, url string, target interfac
 }
 
 // GetCacheAndStaleness returns the contents of the cache file and whether or not the cache is stale (this does not make an HTTP request)
-//
-func GetCacheAndStaleness(cacheFilename string, cacheTTLOverride time.Duration, allowCacheUpdate bool, target interface{}) (bool, error) {
+func GetCacheAndStaleness(cacheFilename string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (Response, bool, error) {
 	isStale, err := checkCacheExistenceAndPermissions(cacheFilename, cacheTTLOverride, allowCacheUpdate)
 	if err != nil {
-		return isStale, err
+		return Response{}, isStale, err
 	}
 
-	err = getCacheFileAsStruct(cacheFilename, target)
+	cachedResponse := Response{}
+	err = getCacheFileAsStruct(cacheFilename, &cachedResponse)
 	if err != nil {
-		return isStale, err
+		return Response{}, isStale, err
 	}
 
-	return isStale, nil
+	return cachedResponse, isStale, nil
 }
 
 // GetCacheAndStalenessReturnStruct is the same as GetCacheAndStaleness but it returns the result as a specified struct.

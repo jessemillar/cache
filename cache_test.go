@@ -81,8 +81,7 @@ func TestBasicHttpCacheAsStruct(t *testing.T) {
 }
 
 func TestCache(t *testing.T) {
-	cacheValue := Response{}
-	_, err := GetCacheAndStaleness("cache-test.txt", 0, true, &cacheValue)
+	cacheValue, _, err := GetCacheAndStaleness("cache-test.txt", 0, true)
 	if err != nil {
 		t.Error(err)
 	}
