@@ -58,9 +58,13 @@ func TestHttpCacheNoUpdateAllowed(t *testing.T) {
 
 func TestHttpCacheAsStruct(t *testing.T) {
 	apiResponse := testResponse{}
-	err := HttpRequestReturnStruct("GET", "https://raw.githubusercontent.com/jessemillar/static-json/main/cache-test.json", nil, 0, true, &apiResponse)
+	statusCode, err := HttpRequestReturnStruct("GET", "https://raw.githubusercontent.com/jessemillar/static-json/main/cache-test.json", nil, 0, true, &apiResponse)
 	if err != nil {
 		t.Error(err)
+	}
+
+	if statusCode != 200 {
+		t.Error("Response status code is incorrect")
 	}
 
 	if apiResponse.Test.Value != 1 {
@@ -70,9 +74,13 @@ func TestHttpCacheAsStruct(t *testing.T) {
 
 func TestBasicHttpCacheAsStruct(t *testing.T) {
 	apiResponse := testResponse{}
-	err := BasicHttpRequestReturnStruct("GET", "https://raw.githubusercontent.com/jessemillar/static-json/main/cache-test.json", &apiResponse)
+	statusCode, err := BasicHttpRequestReturnStruct("GET", "https://raw.githubusercontent.com/jessemillar/static-json/main/cache-test.json", &apiResponse)
 	if err != nil {
 		t.Error(err)
+	}
+
+	if statusCode != 200 {
+		t.Error("Response status code is incorrect")
 	}
 
 	if apiResponse.Test.Value != 1 {
