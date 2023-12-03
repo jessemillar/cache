@@ -56,13 +56,13 @@ func composeFilename(name string) string {
 
 // -- File IO functions
 
-func GetCacheFileAsStruct(filename string, target interface{}) error {
+func getCacheFileAsStruct(filename string, target interface{}) error {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal([]byte(data), &target)
+	err = json.Unmarshal([]byte(data), target)
 	if err != nil {
 		return err
 	}
@@ -163,6 +163,7 @@ func checkCacheExistenceAndPermissions(cacheFilename string, cacheTTLOverride ti
 	return true, nil // Cache doesn't exist yet and we're allowed to create it
 }
 
+// httpRequest returns the cache filename and an error
 func httpRequest(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (string, error) {
 	cacheFilename := composeFilename(httpRequestToHash(httpMethod, url, headers))
 
@@ -190,7 +191,7 @@ func HttpRequest(httpMethod string, url string, headers map[string][]string, cac
 	}
 
 	response := Response{}
-	err = GetCacheFileAsStruct(cacheFilename, &response)
+	err = getCacheFileAsStruct(cacheFilename, &response)
 	if err != nil {
 		return Response{}, err
 	}
@@ -201,19 +202,19 @@ func HttpRequest(httpMethod string, url string, headers map[string][]string, cac
 // HttpRequestReturnStruct is the same as HttpRequest but it returns the result as a specified struct.
 // HttpRequest sends an HTTP request to the specified URL and returns the HTTP response.
 // The response is cached for a duration specified by cacheTTL. If cacheTTLOverride is zero, the default cache TTL value is used.
-func HttpRequestReturnStruct(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool, target interface{}) (Response, error) {
-	cacheFilename, err := httpRequest(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate)
+func HttpRequestReturnStruct(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool, target interface{}) error {
+	cachedResponse, err := HttpRequest(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate)
 	if err != nil {
-		return Response{}, err
+		return err
 	}
 
-	response := Response{}
-	err = GetCacheFileAsStruct(cacheFilename, &response)
+	// Unmarshal the response body into the specified struct since we don't seem to care about the status code
+	err = json.Unmarshal([]byte(cachedResponse.Body), target)
 	if err != nil {
-		return Response{}, err
+		return err
 	}
 
-	return response, nil
+	return nil
 }
 
 // BasicHttpRequest makes a request with default parameters
@@ -222,7 +223,7 @@ func BasicHttpRequest(httpMethod string, url string) (Response, error) {
 }
 
 // BasicHttpRequestReturnStruct makes a request with default parameters
-func BasicHttpRequestReturnStruct(httpMethod string, url string, target interface{}) (Response, error) {
+func BasicHttpRequestReturnStruct(httpMethod string, url string, target interface{}) error {
 	return HttpRequestReturnStruct(httpMethod, url, nil, 0, true, target)
 }
 
@@ -233,13 +234,13 @@ func GetCacheAndStaleness(cacheFilename string, cacheTTLOverride time.Duration, 
 		return Response{}, isStale, err
 	}
 
-	cacheContents := Response{}
-	err = GetCacheFileAsStruct(cacheFilename, &cacheContents)
+	cachedResponse := Response{}
+	err = getCacheFileAsStruct(cacheFilename, &cachedResponse)
 	if err != nil {
 		return Response{}, isStale, err
 	}
 
-	return cacheContents, isStale, nil
+	return cachedResponse, isStale, nil
 }
 
 // GetCacheAndStalenessReturnStruct is the same as GetCacheAndStaleness but it returns the result as a specified struct.
@@ -250,7 +251,7 @@ func GetCacheAndStalenessReturnStruct(cacheFilename string, cacheTTLOverride tim
 		return isStale, err
 	}
 
-	err = GetCacheFileAsStruct(cacheFilename, target)
+	err = getCacheFileAsStruct(cacheFilename, target)
 	if err != nil {
 		return isStale, err
 	}
