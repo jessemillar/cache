@@ -117,7 +117,7 @@ func TestCacheAsStruct(t *testing.T) {
 
 func TestGetCacheFileAsStruct(t *testing.T) {
 	cacheValue := testResponse{}
-	err := getCacheFileAsStruct("cache-test-struct.txt", &cacheValue)
+	err := GetCacheFileAsStruct("cache-test-struct.txt", &cacheValue)
 	if err != nil {
 		t.Error(err)
 	}

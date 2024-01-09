@@ -56,8 +56,18 @@ func composeFilename(name string) string {
 
 // -- File IO functions
 
-func getCacheFileAsStruct(filename string, target interface{}) error {
+// GetCacheFileAsString reads the content of a file and returns it as a string.
+func GetCacheFileAsString(filename string) (string, error) {
 	data, err := os.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// GetCacheFileAsStruct reads the content of a file, unmarshals it as JSON into the target structure.
+func GetCacheFileAsStruct(filename string, target interface{}) error {
+	data, err := GetCacheFileAsString(filename)
 	if err != nil {
 		return err
 	}
@@ -191,7 +201,7 @@ func HttpRequest(httpMethod string, url string, headers map[string][]string, cac
 	}
 
 	response := Response{}
-	err = getCacheFileAsStruct(cacheFilename, &response)
+	err = GetCacheFileAsStruct(cacheFilename, &response)
 	if err != nil {
 		return Response{}, err
 	}
@@ -235,7 +245,7 @@ func GetCacheAndStaleness(cacheFilename string, cacheTTLOverride time.Duration, 
 	}
 
 	cachedResponse := Response{}
-	err = getCacheFileAsStruct(cacheFilename, &cachedResponse)
+	err = GetCacheFileAsStruct(cacheFilename, &cachedResponse)
 	if err != nil {
 		return Response{}, isStale, err
 	}
@@ -251,7 +261,7 @@ func GetCacheAndStalenessReturnStruct(cacheFilename string, cacheTTLOverride tim
 		return isStale, err
 	}
 
-	err = getCacheFileAsStruct(cacheFilename, target)
+	err = GetCacheFileAsStruct(cacheFilename, target)
 	if err != nil {
 		return isStale, err
 	}
