@@ -2,15 +2,15 @@ package cache
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -29,9 +29,10 @@ type Response struct {
 // -- Utility functions
 
 func hash(s string) string {
-	h := fnv.New32a()
+	h := sha1.New()
 	h.Write([]byte(s))
-	return strconv.FormatUint(uint64(h.Sum32()), 10)
+	bs := h.Sum(nil)
+	return hex.EncodeToString(bs) // Convert to hex string
 }
 
 func mapToString(m map[string][]string) string {
