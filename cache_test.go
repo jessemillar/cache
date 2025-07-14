@@ -25,6 +25,21 @@ func TestHttpCache(t *testing.T) {
 	}
 }
 
+func TestHttpCacheWithName(t *testing.T) {
+	response, err := BasicHttpRequestWithName("GET", "https://raw.githubusercontent.com/jessemillar/static-json/main/cache-test.json", "cache-test")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if response.StatusCode != 200 {
+		t.Error("Response status code is incorrect")
+	}
+
+	if response.Body != "{\n    \"test\": {\n        \"value\": 1\n    }\n}\n" {
+		t.Error("Response body is incorrect")
+	}
+}
+
 func TestBasicHttpCache(t *testing.T) {
 	response, err := BasicHttpRequest("GET", "https://raw.githubusercontent.com/jessemillar/static-json/main/cache-test.json")
 	if err != nil {

@@ -55,6 +55,13 @@ func composeFilename(name string) string {
 	return cacheFilePrefix + name + cacheFileFormat
 }
 
+func getEffectiveCacheName(customName string, httpMethod string, url string, headers map[string][]string) string {
+	if customName != "" {
+		return customName
+	}
+	return httpRequestToHash(httpMethod, url, headers)
+}
+
 // -- File IO functions
 
 // GetCacheFileAsString reads the content of a file and returns it as a string.
@@ -175,8 +182,9 @@ func checkCacheExistenceAndPermissions(cacheFilename string, cacheTTLOverride ti
 }
 
 // httpRequest returns the cache filename and an error
-func httpRequest(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (string, error) {
-	cacheFilename := composeFilename(httpRequestToHash(httpMethod, url, headers))
+func httpRequest(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool, customCacheName string) (string, error) {
+	cacheName := getEffectiveCacheName(customCacheName, httpMethod, url, headers)
+	cacheFilename := composeFilename(cacheName)
 
 	isStale, err := checkCacheExistenceAndPermissions(cacheFilename, cacheTTLOverride, allowCacheUpdate)
 	if err != nil {
@@ -196,7 +204,14 @@ func httpRequest(httpMethod string, url string, headers map[string][]string, cac
 // HttpRequest sends an HTTP request to the specified URL and returns the HTTP response.
 // The response is cached for a duration specified by cacheTTL. If cacheTTLOverride is zero, the default cache TTL value is used.
 func HttpRequest(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (Response, error) {
-	cacheFilename, err := httpRequest(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate)
+	return HttpRequestWithName(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate, "")
+}
+
+// HttpRequestWithName sends an HTTP request to the specified URL and returns the HTTP response.
+// The response is cached for a duration specified by cacheTTL. If cacheTTLOverride is zero, the default cache TTL value is used.
+// If customCacheName is provided, it will be used as the cache filename instead of generating a hash from the request.
+func HttpRequestWithName(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool, customCacheName string) (Response, error) {
+	cacheFilename, err := httpRequest(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate, customCacheName)
 	if err != nil {
 		return Response{}, err
 	}
@@ -214,7 +229,15 @@ func HttpRequest(httpMethod string, url string, headers map[string][]string, cac
 // HttpRequest sends an HTTP request to the specified URL and returns the HTTP response.
 // The response is cached for a duration specified by cacheTTL. If cacheTTLOverride is zero, the default cache TTL value is used.
 func HttpRequestReturnStruct(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool, target interface{}) (int, error) {
-	cachedResponse, err := HttpRequest(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate)
+	return HttpRequestReturnStructWithName(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate, "", target)
+}
+
+// HttpRequestReturnStructWithName is the same as HttpRequest but it returns the result as a specified struct.
+// HttpRequest sends an HTTP request to the specified URL and returns the HTTP response.
+// The response is cached for a duration specified by cacheTTL. If cacheTTLOverride is zero, the default cache TTL value is used.
+// If customCacheName is provided, it will be used as the cache filename instead of generating a hash from the request.
+func HttpRequestReturnStructWithName(httpMethod string, url string, headers map[string][]string, cacheTTLOverride time.Duration, allowCacheUpdate bool, customCacheName string, target interface{}) (int, error) {
+	cachedResponse, err := HttpRequestWithName(httpMethod, url, headers, cacheTTLOverride, allowCacheUpdate, customCacheName)
 	if err != nil {
 		return 0, err
 	}
@@ -236,6 +259,16 @@ func BasicHttpRequest(httpMethod string, url string) (Response, error) {
 // BasicHttpRequestReturnStruct makes a request with default parameters
 func BasicHttpRequestReturnStruct(httpMethod string, url string, target interface{}) (int, error) {
 	return HttpRequestReturnStruct(httpMethod, url, nil, 0, true, target)
+}
+
+// NamedHttpRequest makes a request with a custom cache name
+func BasicHttpRequestWithName(httpMethod string, url string, cacheName string) (Response, error) {
+	return HttpRequestWithName(httpMethod, url, nil, 0, true, cacheName)
+}
+
+// NamedHttpRequestReturnStruct makes a request with a custom cache name and returns the result as a struct
+func BasicHttpRequestWithNameReturnStruct(httpMethod string, url string, cacheName string, target interface{}) (int, error) {
+	return HttpRequestReturnStructWithName(httpMethod, url, nil, 0, true, cacheName, target)
 }
 
 // GetCacheAndStaleness returns the contents of the cache file and whether or not the cache is stale (this does not make an HTTP request)
