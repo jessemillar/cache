@@ -11,7 +11,7 @@ type testResponse struct {
 }
 
 func TestHttpCache(t *testing.T) {
-	response, err := HttpRequest("GET", "https://raw.githubusercontent.com/jessemillar/static-json/main/cache-test.json", nil, 0, true)
+	response, err := HttpRequest("GET", "https://raw.githubusercontent.com/jessemillar/cache/refs/heads/main/cache_test.json", nil, 0, true)
 	if err != nil {
 		t.Error(err)
 	}
@@ -26,7 +26,7 @@ func TestHttpCache(t *testing.T) {
 }
 
 func TestHttpCacheWithName(t *testing.T) {
-	response, err := BasicHttpRequestWithName("GET", "https://raw.githubusercontent.com/jessemillar/static-json/main/cache-test.json", "cache-test")
+	response, err := BasicHttpRequestWithName("GET", "https://raw.githubusercontent.com/jessemillar/cache/refs/heads/main/cache_test.json", "cache-test")
 	if err != nil {
 		t.Error(err)
 	}
@@ -41,7 +41,7 @@ func TestHttpCacheWithName(t *testing.T) {
 }
 
 func TestBasicHttpCache(t *testing.T) {
-	response, err := BasicHttpRequest("GET", "https://raw.githubusercontent.com/jessemillar/static-json/main/cache-test.json")
+	response, err := BasicHttpRequest("GET", "https://raw.githubusercontent.com/jessemillar/cache/refs/heads/main/cache_test.json")
 	if err != nil {
 		t.Error(err)
 	}
@@ -73,7 +73,7 @@ func TestHttpCacheNoUpdateAllowed(t *testing.T) {
 
 func TestHttpCacheAsStruct(t *testing.T) {
 	apiResponse := testResponse{}
-	statusCode, err := HttpRequestReturnStruct("GET", "https://raw.githubusercontent.com/jessemillar/static-json/main/cache-test.json", nil, 0, true, &apiResponse)
+	statusCode, err := HttpRequestReturnStruct("GET", "https://raw.githubusercontent.com/jessemillar/cache/refs/heads/main/cache_test.json", nil, 0, true, &apiResponse)
 	if err != nil {
 		t.Error(err)
 	}
@@ -89,7 +89,7 @@ func TestHttpCacheAsStruct(t *testing.T) {
 
 func TestBasicHttpCacheAsStruct(t *testing.T) {
 	apiResponse := testResponse{}
-	statusCode, err := BasicHttpRequestReturnStruct("GET", "https://raw.githubusercontent.com/jessemillar/static-json/main/cache-test.json", &apiResponse)
+	statusCode, err := BasicHttpRequestReturnStruct("GET", "https://raw.githubusercontent.com/jessemillar/cache/refs/heads/main/cache_test.json", &apiResponse)
 	if err != nil {
 		t.Error(err)
 	}

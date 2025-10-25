@@ -1,5 +1,4 @@
 {
-    "test": {
-        "value": 1
-    }
+    "status": 200,
+    "body": "Test value"
 }
