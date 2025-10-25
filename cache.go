@@ -11,9 +11,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 )
 
+const cacheDir = "cache"
 const cacheFilePrefix = "cache-"
 const cacheFileFormat = ".txt"
 const httpTimeout = 60 * time.Second
@@ -66,7 +68,7 @@ func getEffectiveCacheName(customName string, httpMethod string, url string, hea
 
 // GetCacheFileAsString reads the content of a file and returns it as a string.
 func GetCacheFileAsString(filename string) (string, error) {
-	data, err := os.ReadFile(filename)
+	data, err := os.ReadFile(filepath.Join(cacheDir, filename))
 	if err != nil {
 		return "", err
 	}
@@ -89,7 +91,7 @@ func GetCacheFileAsStruct(filename string, target interface{}) error {
 }
 
 func getCacheFileModifiedTime(filename string) (time.Time, error) {
-	file, err := os.Stat(filename)
+	file, err := os.Stat(filepath.Join(cacheDir, filename))
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -100,7 +102,7 @@ func getCacheFileModifiedTime(filename string) (time.Time, error) {
 func WriteStringToCacheFile(filename string, value string) error {
 	fmt.Printf("Writing %s\n", filename)
 
-	err := os.WriteFile(filename, []byte(value), 0666)
+	err := os.WriteFile(filepath.Join(cacheDir, filename), []byte(value), 0666)
 	if err != nil {
 		return err
 	}
