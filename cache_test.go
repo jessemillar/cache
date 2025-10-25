@@ -20,7 +20,7 @@ func TestHttpCache(t *testing.T) {
 		t.Error("Response status code is incorrect")
 	}
 
-	if response.Body != "{\n    \"test\": {\n        \"value\": 1\n    }\n}\n" {
+	if response.Body != "{\n  \"test\": {\n    \"value\": 1\n  }\n}\n" {
 		t.Error("Response body is incorrect")
 	}
 }
@@ -35,7 +35,7 @@ func TestHttpCacheWithName(t *testing.T) {
 		t.Error("Response status code is incorrect")
 	}
 
-	if response.Body != "{\n    \"test\": {\n        \"value\": 1\n    }\n}\n" {
+	if response.Body != "{\n  \"test\": {\n    \"value\": 1\n  }\n}\n" {
 		t.Error("Response body is incorrect")
 	}
 }
@@ -50,7 +50,7 @@ func TestBasicHttpCache(t *testing.T) {
 		t.Error("Response status code is incorrect")
 	}
 
-	if response.Body != "{\n    \"test\": {\n        \"value\": 1\n    }\n}\n" {
+	if response.Body != "{\n  \"test\": {\n    \"value\": 1\n  }\n}\n" {
 		t.Error("Response body is incorrect")
 	}
 }

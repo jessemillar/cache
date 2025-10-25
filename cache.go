@@ -158,7 +158,7 @@ func cacheHttpResponse(cacheFilename string, httpMethod string, url string, head
 func checkCacheExistenceAndPermissions(cacheFilename string, cacheTTLOverride time.Duration, allowCacheUpdate bool) (bool, error) {
 	permissionsErrorMessage := "permissions only allow reading from cache, not permitted to updated cache"
 
-	if _, err := os.Stat(cacheFilename); err == nil { // Check if the cache file exists
+	if _, err := os.Stat(filepath.Join(cacheDir, cacheFilename)); err == nil { // Check if the cache file exists
 		modifiedTime, err := getCacheFileModifiedTime(cacheFilename)
 		if err != nil {
 			return true, err
