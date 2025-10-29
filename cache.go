@@ -111,7 +111,7 @@ func WriteStringToCacheFile(filename string, value string) error {
 		return err
 	}
 
-	err := os.WriteFile(filepath.Join(cacheDir, filename), []byte(value), 0666)
+	err = os.WriteFile(filepath.Join(cacheDir, filename), []byte(value), 0666)
 	if err != nil {
 		return err
 	}
