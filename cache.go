@@ -64,6 +64,10 @@ func getEffectiveCacheName(customName string, httpMethod string, url string, hea
 	return httpRequestToHash(httpMethod, url, headers)
 }
 
+func verifyCacheDirExists() error {
+	return os.MkdirAll(filepath.Join(".", cacheDir), os.ModePerm)
+}
+
 // -- File IO functions
 
 // GetCacheFileAsString reads the content of a file and returns it as a string.
@@ -101,6 +105,11 @@ func getCacheFileModifiedTime(filename string) (time.Time, error) {
 
 func WriteStringToCacheFile(filename string, value string) error {
 	fmt.Printf("Writing %s\n", filename)
+
+	err := verifyCacheDirExists()
+	if err != nil {
+		return err
+	}
 
 	err := os.WriteFile(filepath.Join(cacheDir, filename), []byte(value), 0666)
 	if err != nil {
